@@ -19,13 +19,13 @@ A U.S. business formation platform covering **all 50 states** and three entity t
 **Client portal** (`/portal`)
 - Business name + established date in the header
 - **Credentials** — business name, EIN, state filing date, officers, address, phone, email, website (editable)
-- **Business checklist** — obtain EIN (IRS link + box to record your EIN), D-U-N-S with Dun & Bradstreet, business bank account (partner **Relay** application forwarded to us), state tax/permits, insurance
+- **Business checklist** — obtain EIN (IRS link + box to record your EIN), D-U-N-S with Dun & Bradstreet, business bank account (in-app application reviewed by our team and set up by our backend office), state tax/permits, insurance
 - **Business credit** — Net-30 vendors that approve new businesses, with a starter checklist (Uline, Grainger, Quill, and more)
 
 **Admin console** (`/admin`)
 - Formations queue with filters; analyst approve/reject with notes (24h review step)
 - **Filing queue** (`/admin/filings`) — every paid formation is automatically queued for submission once its document is built. Each filing ships as a single PDF package: an operator cover sheet (state, fees, submission checklist, portal links) merged with the signed Articles. Operations submits via the state's official online filing system and records the result — submitted, filed (with confirmation number), needs attention, or rejected — all workflow-enforced with a full status history. When a filing is marked filed, the formation is marked FILED, the established date is recorded, and the client gets a “you're officially registered” email.
-- Relay bank applications queue (forward → complete)
+- Bank applications queue with an analyst-review flow (received → in review → approved → account set up)
 - States & fees editor — update SOS links, per-type filing fees, form PDF URLs, and mark fees verified
 - Services and checklist item management
 - Email log — every client notification, delivered or logged

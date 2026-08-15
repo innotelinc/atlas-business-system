@@ -24,7 +24,7 @@ export default async function PortalLayout({ children }: { children: React.React
     { href: "/portal/credentials", label: "Credentials", icon: KeyRound },
     { href: "/portal/checklist", label: "Business checklist", icon: ListChecks },
     { href: "/portal/credit", label: "Business credit", icon: CreditCard },
-    { href: "/portal/bank", label: "Banking (Relay)", icon: Landmark },
+    { href: "/portal/bank", label: "Business banking", icon: Landmark },
   ];
 
   return (

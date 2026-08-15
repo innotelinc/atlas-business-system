@@ -53,8 +53,9 @@ export function BankApplicationForm({
         <p className="text-2xl">🎉</p>
         <h2 className="mt-3 text-lg font-bold text-brand-950">Application submitted</h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-          We&apos;ve received your Relay application and will forward it to Relay for account setup
-          once your business formation is complete. You can track its status here.
+          We&apos;ve received your application. Our team will review it and our backend office will
+          set up your account once your business formation is complete. You can track its status
+          here.
         </p>
       </div>
     );
@@ -131,7 +132,7 @@ export function BankApplicationForm({
       </div>
       {error && <p className="text-sm font-medium text-red-600">{error}</p>}
       <Button type="submit" loading={submitting}>
-        Submit application to Atlas → Relay
+        Submit application
       </Button>
     </form>
   );

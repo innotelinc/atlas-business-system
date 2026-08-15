@@ -53,14 +53,14 @@ export default async function ChecklistPage() {
           Need a business bank account?
         </p>
         <p className="mt-1 text-sm text-brand-800">
-          We partner with Relay, a business banking platform built for companies like yours. Submit
-          an application and we&apos;ll forward it to Relay for account setup.
+          Apply for a business checking account through Atlas. Our team reviews your application
+          and our backend office sets up your account once your formation is complete.
         </p>
         <Link
           href="/portal/bank"
           className="mt-3 inline-flex h-10 items-center rounded-lg bg-brand-950 px-4 text-sm font-semibold text-white hover:bg-brand-800"
         >
-          Apply with Relay →
+          Apply for business banking →
         </Link>
       </div>
     </div>

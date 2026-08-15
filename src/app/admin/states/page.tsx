@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Badge, Card } from "@/components/ui";
 import { usd } from "@/lib/format";
 import { StateFeeEditor } from "@/components/admin/StateFeeEditor";
+import { StateVerifyActions, VerifyAllButton } from "@/components/admin/StateVerifyActions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,18 @@ export default async function StatesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-brand-950">States & filing fees</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Secretary of State links and per-type filing fees. All 50 states were verified on
-          2026-08-15 against official SOS fee schedules — hover the source note under each fee for
-          the citation. Use the editor to adjust and re-verify as states change their fees.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-950">States & filing fees</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Secretary of State links and per-type filing fees. All 50 states were verified on
+            2026-08-15 against official SOS fee schedules — hover the source note under each fee for
+            the citation. Use <span className="font-semibold">Open official sources</span> to
+            re-check a state&apos;s prices, then <span className="font-semibold">Mark verified</span> to
+            record it.
+          </p>
+        </div>
+        <VerifyAllButton />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -62,7 +68,11 @@ export default async function StatesPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-4">
+              <div className="mt-4 space-y-3">
+                <StateVerifyActions
+                  stateCode={s.code}
+                  sources={[s.sosSiteUrl, ...s.fees.map((f) => f.documentUrl).filter((u): u is string => Boolean(u))]}
+                />
                 <StateFeeEditor state={s} fees={s.fees} />
               </div>
             </Card>
