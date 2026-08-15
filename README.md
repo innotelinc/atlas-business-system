@@ -1,5 +1,7 @@
 # Atlas Business System
 
+**Live at https://atlas-business-system.vercel.app** (auto-deploys from `main` on push).
+
 A U.S. business formation platform covering **all 50 states** and three entity types — **LLC**, **For-Profit Corporation**, and **Non-Profit Corporation** — with a client portal for post-formation tasks.
 
 ## What it does
