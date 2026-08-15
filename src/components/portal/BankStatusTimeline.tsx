@@ -28,8 +28,8 @@ export function BankStatusTimeline({ status }: { status: string }) {
   return (
     <ol>
       {STEPS.map((s, i) => {
-        const done = i < current;
-        const active = i === current;
+        const done = i < current || status === "completed";
+        const active = i === current && status !== "completed";
         return (
           <li key={s.key} className="relative flex gap-4 pb-8 last:pb-0">
             {i < STEPS.length - 1 && (
