@@ -6,24 +6,92 @@ import { Input, Label, Textarea, Button } from "@/components/ui";
 
 export type DocData = Record<string, unknown>;
 
+export type FormFieldDef =
+  | {
+      key: string;
+      label: string;
+      type: "text" | "textarea";
+      required: boolean;
+      placeholder?: string;
+    }
+  | { key: string; label: string; type: "select"; required: boolean; options: string[] }
+  | { key: string; label: string; type: "people"; required: boolean; roleLabel?: string | null }
+  | { key: string; label: string; type: "checkbox"; required: boolean };
+
+// Read a nested key like "registeredAgent.name" out of the data object.
+function read(data: DocData, key: string): unknown {
+  const parts = key.split(".");
+  let cur: unknown = data;
+  for (const p of parts) {
+    if (cur && typeof cur === "object") cur = (cur as Record<string, unknown>)[p];
+    else return undefined;
+  }
+  return cur;
+}
+
+// Write a nested key like "registeredAgent.name" into the data object.
+function write(data: DocData, key: string, value: unknown): DocData {
+  const parts = key.split(".");
+  const next: DocData = { ...data };
+  let cur = next;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const prev = (cur[parts[i]] as DocData | undefined) ?? {};
+    cur[parts[i]] = { ...prev };
+    cur = cur[parts[i]] as DocData;
+  }
+  cur[parts[parts.length - 1]] = value;
+  return next;
+}
+
 export function DocumentBuilder({
   type,
   businessName,
   initial,
+  fields,
   onSave,
   saving,
 }: {
   type: "LLC" | "FOR_PROFIT" | "NON_PROFIT";
   businessName: string;
   initial: DocData;
+  fields?: FormFieldDef[] | null;
   onSave: (data: DocData) => Promise<void>;
   saving: boolean;
 }) {
-  const [data, setData] = useState<DocData>(initial);
-  const set = (key: string, value: unknown) => setData((d) => ({ ...d, [key]: value }));
+  const [data, setData] = useState<DocData>({
+    businessName: businessName || undefined,
+    ...initial,
+  });
+  const set = (key: string, value: unknown) => setData((d) => write(d, key, value));
 
-  const members = (data.members as { name?: string; title?: string }[]) ?? [];
-  const directors = (data.directors as { name?: string }[]) ?? [];
+  const peopleValue = (key: string): { name: string; role: string }[] =>
+    ((data[key] as { name?: string; role?: string }[]) ?? []).map((p) => ({
+      name: p.name ?? "",
+      role: p.role ?? "",
+    }));
+
+  // If the state form template is available, render exactly its fields.
+  if (fields && fields.length > 0) {
+    return (
+      <div className="space-y-6">
+        {fields.map((f) => (
+          <Field
+            key={f.key}
+            field={f}
+            value={read(data, f.key)}
+            onChange={(v) => set(f.key, v)}
+          />
+        ))}
+        <Button loading={saving} onClick={() => onSave(data)} className="w-full sm:w-auto">
+          Save document details
+        </Button>
+      </div>
+    );
+  }
+
+  // Fallback (no template): the generic field set.
+  const members = peopleValue("members");
+  const directors = peopleValue("directors");
 
   return (
     <div className="space-y-6">
@@ -50,7 +118,7 @@ export function DocumentBuilder({
           <Input
             value={((data.registeredAgent as { name?: string })?.name) ?? ""}
             onChange={(e) =>
-              set("registeredAgent", { ...((data.registeredAgent as object) ?? {}), name: e.target.value })
+              set("registeredAgent.name", e.target.value)
             }
             placeholder="Agent name"
           />
@@ -60,7 +128,7 @@ export function DocumentBuilder({
           <Input
             value={((data.registeredAgent as { address?: string })?.address) ?? ""}
             onChange={(e) =>
-              set("registeredAgent", { ...((data.registeredAgent as object) ?? {}), address: e.target.value })
+              set("registeredAgent.address", e.target.value)
             }
             placeholder="Street, City, State ZIP"
           />
@@ -71,26 +139,16 @@ export function DocumentBuilder({
         <>
           <div>
             <Label>Management structure</Label>
-            <div className="flex gap-3">
-              {["member-managed", "manager-managed"].map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => set("management", m)}
-                  className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-                    (data.management as string) === m
-                      ? "border-brand-700 bg-brand-50 text-brand-800"
-                      : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {m === "member-managed" ? "Member-managed" : "Manager-managed"}
-                </button>
-              ))}
-            </div>
+            <SelectOptions
+              value={(data.management as string) ?? ""}
+              options={["member-managed", "manager-managed"]}
+              labels={{ "member-managed": "Member-managed", "manager-managed": "Manager-managed" }}
+              onChange={(v) => set("management", v)}
+            />
           </div>
           <PeopleList
             title="Members"
-            people={members.map((m) => ({ name: m.name ?? "", role: m.title ?? "" }))}
+            people={members}
             roleLabel="Title (optional)"
             onChange={(list) => set("members", list.map((m) => ({ name: m.name, title: m.role })))}
           />
@@ -101,7 +159,7 @@ export function DocumentBuilder({
         <>
           <PeopleList
             title={type === "FOR_PROFIT" ? "Directors" : "Directors (board)"}
-            people={directors.map((d) => ({ name: d.name ?? "", role: "" }))}
+            people={directors}
             roleLabel={null}
             onChange={(list) => set("directors", list.map((d) => ({ name: d.name })))}
           />
@@ -161,6 +219,125 @@ export function DocumentBuilder({
   );
 }
 
+function Field({
+  field,
+  value,
+  onChange,
+}: {
+  field: FormFieldDef;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  if (field.type === "textarea") {
+    return (
+      <div>
+        <Label>
+          {field.label}
+          {field.required && " *"}
+        </Label>
+        <Textarea
+          rows={3}
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+        />
+      </div>
+    );
+  }
+  if (field.type === "select") {
+    return (
+      <div>
+        <Label>
+          {field.label}
+          {field.required && " *"}
+        </Label>
+        <SelectOptions
+          value={(value as string) ?? ""}
+          options={field.options}
+          onChange={(v) => onChange(v)}
+        />
+      </div>
+    );
+  }
+  if (field.type === "people") {
+    const people = ((value as { name?: string; role?: string }[]) ?? []).map((p) => ({
+      name: p.name ?? "",
+      role: p.role ?? "",
+    }));
+    return (
+      <PeopleList
+        title={field.label}
+        people={people}
+        roleLabel={field.roleLabel ?? null}
+        onChange={(list) =>
+          onChange(list.map((p) => ({ name: p.name, role: p.role })))
+        }
+      />
+    );
+  }
+  if (field.type === "checkbox") {
+    return (
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <input
+          type="checkbox"
+          checked={Boolean(value)}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-700"
+        />
+        <span className="text-sm text-slate-700">{field.label}</span>
+      </label>
+    );
+  }
+  return (
+    <div>
+      <Label>
+        {field.label}
+        {field.required && " *"}
+      </Label>
+      <Input
+        value={(value as string) ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder}
+      />
+    </div>
+  );
+}
+
+function SelectOptions({
+  value,
+  options,
+  labels,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  labels?: Record<string, string>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {options.map((opt) => {
+        const label = labels?.[opt] ?? opt;
+        const selected = value.toLowerCase() === opt.toLowerCase();
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(opt)}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              selected
+                ? "border-brand-700 bg-brand-50 text-brand-800"
+                : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function PeopleList({
   title,
   people,
@@ -210,7 +387,8 @@ function PeopleList({
         onClick={() => onChange([...people, { name: "", role: "" }])}
         className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
       >
-        <Plus className="h-4 w-4" /> Add {title.toLowerCase().replace(/\(board\)/, "").trim()}
+        <Plus className="h-4 w-4" /> Add{" "}
+        {title.toLowerCase().replace(/\s*\(.*\)\s*$/, "").trim()}
       </button>
     </div>
   );

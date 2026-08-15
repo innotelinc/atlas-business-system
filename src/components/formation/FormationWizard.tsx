@@ -48,7 +48,13 @@ type WizardState = {
     sosSiteUrl: string;
     nameSearchUrl: string | null;
     notes: string | null;
-    fee: { stateFeeCents: number; filingTime: string | null; documentUrl: string | null; verified: boolean } | null;
+    fee: {
+      stateFeeCents: number;
+      filingTime: string | null;
+      documentUrl: string | null;
+      verified: boolean;
+      formFields: unknown[] | null;
+    } | null;
   } | null;
   pricing: { serviceFeeCents: number; competitorRetailCents: number; competitorName: string } | null;
   services: {
@@ -423,8 +429,8 @@ export default function FormationWizard({ states }: { states: { code: string; na
                   {usd(data.state.fee?.stateFeeCents ?? 0)}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  Typical turnaround: {data.state.fee?.filingTime ?? "varies"} ·{" "}
-                  {data.state.fee?.verified ? "Verified fee" : "Fee shown is a starting estimate — we confirm before filing"}
+                  Typical turnaround: {data.state.fee?.filingTime ?? "varies"} · We confirm the exact
+                  fee before filing
                 </p>
               </div>
               {data.state.fee?.documentUrl && (
@@ -681,17 +687,54 @@ export default function FormationWizard({ states }: { states: { code: string; na
       )}
 
       {/* STEP 4 — document builder */}
-      {step === 4 && formation && (
+      {step === 4 && formation && data?.state && (
         <StepShell
           title="Build your incorporation document"
-          subtitle="Fill in the details below — we generate your Articles of Organization / Incorporation from them."
+          subtitle={`Fill in the fields below — we generate a replica of the ${data.state.name} Secretary of State's official form, ready to submit.`}
           onBack={() => goto(3)}
         >
+          {/* Official form — electronic copy or by mail */}
+          <Card className="mb-4 border-brand-100 bg-brand-50/50">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-brand-950">
+                  The official {data.state.name} form for this filing
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  The fields below mirror the state&apos;s own form. Get the exact official document
+                  for reference — or request a copy by mail from the{" "}
+                  {data.state.name} Secretary of State.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {data.state.fee?.documentUrl && (
+                  <a
+                    href={data.state.fee.documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-950 px-4 text-sm font-semibold text-white hover:bg-brand-800"
+                  >
+                    <Download className="h-4 w-4" /> Official form (electronic copy)
+                  </a>
+                )}
+                <a
+                  href={data.state.sosSiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Request by mail <ExternalLink className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+          </Card>
+
           <Card>
             <DocumentBuilder
               type={formation.type}
               businessName={formation.businessName ?? ""}
               initial={formation.document?.data ?? {}}
+              fields={(data.state.fee?.formFields as Parameters<typeof DocumentBuilder>[0]["fields"] | undefined) ?? null}
               onSave={saveDocument}
               saving={busy}
             />

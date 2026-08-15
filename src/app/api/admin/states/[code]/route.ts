@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
@@ -10,6 +11,7 @@ const feeSchema = z.object({
   filingTime: z.string().nullable().optional(),
   verified: z.boolean().optional(),
   sourceNote: z.string().nullable().optional(),
+  formFields: z.array(z.record(z.string(), z.unknown())).nullable().optional(),
 });
 
 const schema = z.object({
@@ -59,6 +61,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
           filingTime: f.filingTime ?? undefined,
           verified: f.verified ?? undefined,
           sourceNote: f.sourceNote ?? undefined,
+          formFields: (f.formFields as unknown as Prisma.InputJsonValue) ?? undefined,
         },
       });
     } else {
@@ -71,6 +74,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ code: 
           filingTime: f.filingTime ?? null,
           verified: f.verified ?? false,
           sourceNote: f.sourceNote ?? null,
+          formFields: (f.formFields as unknown as Prisma.InputJsonValue) ?? null,
         },
       });
     }

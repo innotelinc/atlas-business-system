@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function CreditPage() {
   const session = await requireUser();
   const formation = await prisma.formation.findFirst({
-    where: { userId: session.id },
+    where: { userId: session.id, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
 

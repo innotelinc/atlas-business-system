@@ -274,6 +274,103 @@ class Doc {
   }
 }
 
+type FormFieldShape = {
+  key: string;
+  label: string;
+  type?: string;
+  required?: boolean;
+  options?: string[];
+};
+
+/** Read a nested key like "registeredAgent.name" from the document data. */
+function readVal(data: DocData, key: string): unknown {
+  const parts = key.split(".");
+  let cur: unknown = data;
+  for (const p of parts) {
+    if (cur && typeof cur === "object") cur = (cur as Record<string, unknown>)[p];
+    else return undefined;
+  }
+  return cur;
+}
+
+/** Flatten template fields into labeled rows with values pulled from the data. */
+function fieldRows(fields: FormFieldShape[], data: DocData): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = [];
+  for (const f of fields) {
+    const raw = readVal(data, f.key);
+    if (Array.isArray(raw)) {
+      const names = raw
+        .filter((x) => x && typeof x === "object" && (x as { name?: string }).name)
+        .map((x) => {
+          const o = x as { name?: string; role?: string; title?: string; address?: string };
+          const extra = o.role || o.title || "";
+          return extra ? `${o.name} — ${extra}` : o.name!;
+        });
+      if (names.length) rows.push({ label: f.label, value: names.join(", ") });
+    } else if (f.key === "c501c3") {
+      if (raw) {
+        rows.push({
+          label: f.label,
+          value:
+            "Yes — the corporation intends to apply for recognition of exemption under Section 501(c)(3) of the Internal Revenue Code.",
+        });
+      }
+    } else if (typeof raw === "string" && raw.trim()) {
+      rows.push({ label: f.label, value: raw.trim() });
+    }
+  }
+  return rows;
+}
+
+/** Render the state form's fields as ARTICLE sections of the replica document. */
+function renderTemplateArticles(
+  doc: Doc,
+  type: FormationType,
+  fields: FormFieldShape[],
+  data: DocData,
+) {
+  const rows = fieldRows(fields, data);
+  const byKey = (keys: string[]) => {
+    const set = new Set(keys);
+    return rows.filter((_r, i) => set.has(fields[i].key));
+  };
+
+  const groups: { title: string; keys: string[] }[] = [
+    { title: "ARTICLE I — NAME", keys: ["businessName"] },
+    { title: "ARTICLE II — TYPE", keys: [] },
+    { title: "ARTICLE III — PRINCIPAL OFFICE", keys: ["principalAddress", "mailingAddress"] },
+    { title: "ARTICLE IV — REGISTERED AGENT", keys: ["registeredAgent.name", "registeredAgent.address"] },
+    {
+      title: type === "LLC" ? "ARTICLE V — MANAGEMENT & ORGANIZERS" : "ARTICLE V — DIRECTORS & INCORPORATION",
+      keys:
+        type === "LLC"
+          ? ["management", "organizers"]
+          : ["incorporator", "directors", "shares"],
+    },
+    { title: "ARTICLE VI — PURPOSE", keys: ["purpose", "c501c3"] },
+    { title: "ARTICLE VII — ADDITIONAL PROVISIONS", keys: ["duration", "filerAddress", "organizerAddress"] },
+  ];
+
+  const typeLabel =
+    type === "LLC"
+      ? "Limited Liability Company"
+      : type === "FOR_PROFIT"
+        ? "For-Profit Corporation"
+        : "Non-Profit Corporation";
+
+  for (const g of groups) {
+    const groupRows = g.keys.length ? byKey(g.keys) : [];
+    if (g.title === "ARTICLE II — TYPE") {
+      doc.heading(g.title);
+      doc.field("Entity type", typeLabel);
+      continue;
+    }
+    if (!groupRows.length) continue; // skip empty articles
+    doc.heading(g.title);
+    for (const r of groupRows) doc.field(r.label, r.value);
+  }
+}
+
 /** Official-looking Articles of Organization / Incorporation. */
 export async function buildFormationPdf(opts: {
   type: FormationType;
@@ -284,8 +381,10 @@ export async function buildFormationPdf(opts: {
   signedAt?: Date | null;
   /** When embedded inside another document, skip "Page X of Y" (the parent stamps it). */
   suppressPageNumbers?: boolean;
+  /** The state's official form field template — renders the replica document from it. */
+  fields?: unknown[] | null;
 }): Promise<Uint8Array> {
-  const { type, stateName, stateCode, data, signature, signedAt, suppressPageNumbers } = opts;
+  const { type, stateName, stateCode, data, signature, signedAt, suppressPageNumbers, fields } = opts;
   const businessName = (data.businessName as string) || "[Business Name]";
   const principalAddress = (data.principalAddress as string) || "";
   const registeredAgent = (data.registeredAgent as { name?: string; address?: string }) || {};
@@ -319,46 +418,52 @@ export async function buildFormationPdf(opts: {
     tag: `FILING DOCUMENT · FOR SUBMISSION TO THE ${stateName.toUpperCase()} SECRETARY OF STATE (${stateCode})`,
   });
 
-  doc.heading("ARTICLE I — NAME");
-  doc.field("Name of the entity", businessName);
+  if (fields && fields.length > 0) {
+    // Replica document — render the state form's own required fields.
+    renderTemplateArticles(doc, type, fields as FormFieldShape[], data);
+  } else {
+    // Fallback: the generic Articles layout (used for legacy documents).
+    doc.heading("ARTICLE I — NAME");
+    doc.field("Name of the entity", businessName);
 
-  doc.heading("ARTICLE II — TYPE");
-  doc.field("Entity type", typeLabel);
+    doc.heading("ARTICLE II — TYPE");
+    doc.field("Entity type", typeLabel);
 
-  doc.heading("ARTICLE III — PRINCIPAL OFFICE");
-  doc.field("Principal office address", principalAddress);
+    doc.heading("ARTICLE III — PRINCIPAL OFFICE");
+    doc.field("Principal office address", principalAddress);
 
-  doc.heading("ARTICLE IV — REGISTERED AGENT");
-  doc.field(
-    "Registered agent",
-    registeredAgent?.name ? `${registeredAgent.name}${registeredAgent.address ? ` — ${registeredAgent.address}` : ""}` : "",
-  );
-
-  if (type === "LLC") {
-    doc.heading("ARTICLE V — MANAGEMENT");
-    doc.field("Management structure", management ? titleCase(management) : "");
+    doc.heading("ARTICLE IV — REGISTERED AGENT");
     doc.field(
-      "Members",
-      members.map((m) => `${m.name}${m.title ? ` — ${m.title}` : ""}`).join(", "),
+      "Registered agent",
+      registeredAgent?.name ? `${registeredAgent.name}${registeredAgent.address ? ` — ${registeredAgent.address}` : ""}` : "",
     );
 
-    doc.heading("ARTICLE VI — PURPOSE");
-    doc.field("Purpose", purpose);
-  } else {
-    doc.heading("ARTICLE V — DIRECTORS");
-    doc.field("Directors", directors.map((d) => d.name).join(", "));
-    doc.field("Incorporator", incorporator);
-    if (type === "FOR_PROFIT") {
-      doc.field("Authorized shares", shares || "—");
-    }
-
-    doc.heading("ARTICLE VI — PURPOSE");
-    doc.field("Purpose", purpose);
-    if (c501c3) {
+    if (type === "LLC") {
+      doc.heading("ARTICLE V — MANAGEMENT");
+      doc.field("Management structure", management ? titleCase(management) : "");
       doc.field(
-        "Tax-exempt intent",
-        "The corporation intends to apply for recognition of exemption under Section 501(c)(3) of the Internal Revenue Code.",
+        "Members",
+        members.map((m) => `${m.name}${m.title ? ` — ${m.title}` : ""}`).join(", "),
       );
+
+      doc.heading("ARTICLE VI — PURPOSE");
+      doc.field("Purpose", purpose);
+    } else {
+      doc.heading("ARTICLE V — DIRECTORS");
+      doc.field("Directors", directors.map((d) => d.name).join(", "));
+      doc.field("Incorporator", incorporator);
+      if (type === "FOR_PROFIT") {
+        doc.field("Authorized shares", shares || "—");
+      }
+
+      doc.heading("ARTICLE VI — PURPOSE");
+      doc.field("Purpose", purpose);
+      if (c501c3) {
+        doc.field(
+          "Tax-exempt intent",
+          "The corporation intends to apply for recognition of exemption under Section 501(c)(3) of the Internal Revenue Code.",
+        );
+      }
     }
   }
 
@@ -396,8 +501,9 @@ export async function buildFilingPackagePdf(opts: {
   filingProvider: string;
   sosSiteUrl: string;
   nameSearchUrl: string | null;
+  fields?: unknown[] | null;
 }): Promise<Uint8Array> {
-  const { type, stateName, stateCode, data, signature, signedAt, businessName, principalAddress, registeredAgentName, stateFeeCents, filingProvider, sosSiteUrl, nameSearchUrl } = opts;
+  const { type, stateName, stateCode, data, signature, signedAt, businessName, principalAddress, registeredAgentName, stateFeeCents, filingProvider, sosSiteUrl, nameSearchUrl, fields } = opts;
   const typeLabel =
     type === "LLC"
       ? "Limited Liability Company"
@@ -465,6 +571,7 @@ export async function buildFilingPackagePdf(opts: {
     signature,
     signedAt,
     suppressPageNumbers: true,
+    fields,
   });
   const articlesDoc = await PDFDocument.load(articles);
   const copied = await pdfDoc.copyPages(articlesDoc, articlesDoc.getPageIndices());

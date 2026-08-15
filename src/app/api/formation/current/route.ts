@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDraftId, getSession } from "@/lib/auth";
 import { computeTotals, getPricingConfig, type ServiceLine } from "@/lib/pricing";
+import { getFormFields } from "@/lib/form-templates";
 
 export async function GET() {
   // A logged-in user sees their most recent formation; otherwise use the draft cookie.
@@ -17,7 +18,7 @@ export async function GET() {
   }
   if (!formation && session) {
     formation = await prisma.formation.findFirst({
-      where: { userId: session.id },
+      where: { userId: session.id, archivedAt: null },
       orderBy: { createdAt: "desc" },
       include: { nameCheck: true, document: true, services: { include: { service: true } } },
     });
@@ -88,6 +89,9 @@ export async function GET() {
                 filingTime: fee.filingTime,
                 documentUrl: fee.documentUrl,
                 verified: fee.verified,
+                formFields:
+                  (fee.formFields as unknown[]) ??
+                  getFormFields(state.code, formation.type),
               }
             : null,
         }

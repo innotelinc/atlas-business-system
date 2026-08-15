@@ -45,14 +45,16 @@ enum Role {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  name         String?
-  role         Role        @default(CLIENT)
-  formations   Formation[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  email            String      @unique
+  passwordHash     String
+  name             String?
+  role             Role        @default(CLIENT)
+  formations       Formation[]
+  sentMessages     Message[]   @relation("SentMessages")
+  receivedMessages Message[]   @relation("ReceivedMessages")
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 model State {
@@ -81,6 +83,9 @@ model StateFee {
   filingTime    String?
   verified      Boolean       @default(false)
   sourceNote    String?
+  // Field template for the state's official formation form (per entity type),
+  // used to render a replica document for the client to fill out.
+  formFields    Json?
 
   @@unique([stateCode, type])
 }
@@ -132,6 +137,7 @@ model Formation {
   einReminderCount Int                @default(0)
   lastEinReminderAt DateTime?
   filedAt          DateTime?
+  archivedAt       DateTime?
   sentEmails       SentEmail[]
   filings          Filing[]
   nameCheck        NameCheck?
@@ -140,6 +146,7 @@ model Formation {
   services         FormationService[]
   bankApplications BankApplication[]
   checklistEntries ChecklistEntry[]
+  messages         Message[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 }
@@ -236,6 +243,24 @@ model Filing {
 
   @@index([status])
   @@index([stateCode])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  senderId    String
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  recipientId String?
+  recipient   User?     @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  formationId String?
+  formation   Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
+  subject     String
+  body        String
+  // null = sent to the Atlas support inbox (client -> admin); otherwise a user id.
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([recipientId])
+  @@index([senderId])
 }
 
 model SentEmail {

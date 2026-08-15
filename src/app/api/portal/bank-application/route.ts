@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   const formation = await prisma.formation.findFirst({
-    where: { userId: session.id },
+    where: { userId: session.id, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
 

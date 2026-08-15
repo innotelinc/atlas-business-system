@@ -1,6 +1,7 @@
 import { PrismaClient, FormationType, Role, ReviewStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { STATES } from "./seed-data/states";
+import { getFormFields } from "../src/lib/form-templates";
 
 const prisma = new PrismaClient();
 
@@ -44,6 +45,7 @@ async function main() {
         where: { stateCode_type: { stateCode: s.code, type } },
       });
       if (existing?.verified) continue;
+      const formFields = getFormFields(s.code, type);
       await prisma.stateFee.upsert({
         where: { stateCode_type: { stateCode: s.code, type } },
         update: {
@@ -52,6 +54,7 @@ async function main() {
           documentUrl: fee.docUrl,
           verified: false,
           sourceNote: "Best-effort starting value — verify against the state SOS fee schedule in the admin UI.",
+          formFields: formFields as unknown as object[],
         },
         create: {
           stateCode: s.code,
@@ -61,6 +64,7 @@ async function main() {
           documentUrl: fee.docUrl,
           verified: false,
           sourceNote: "Best-effort starting value — verify against the state SOS fee schedule in the admin UI.",
+          formFields: formFields as unknown as object[],
         },
       });
     }

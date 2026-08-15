@@ -15,7 +15,7 @@ const patchSchema = z.object({
 
 async function getUserFormation(session: { id: string }) {
   return prisma.formation.findFirst({
-    where: { userId: session.id },
+    where: { userId: session.id, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
 }
