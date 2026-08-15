@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, Building2, CreditCard, KeyRound, ListChecks } from "lucide-react";
+import { ArrowRight, Building2, CreditCard, KeyRound, ListChecks, FileCheck2 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge, Card } from "@/components/ui";
 import { usd, formatType, formatDateShort } from "@/lib/format";
+import { FILING_STATUS_LABEL } from "@/lib/filings";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,11 @@ export default async function PortalDashboardPage() {
     where: { formationId: formation.id, completed: true },
   });
   const checklistTotal = await prisma.checklistItem.count({ where: { active: true } });
+  const latestFiling = await prisma.filing.findFirst({
+    where: { formationId: formation.id },
+    orderBy: { createdAt: "desc" },
+    include: { state: true },
+  });
 
   return (
     <div className="space-y-6">
@@ -58,6 +64,37 @@ export default async function PortalDashboardPage() {
           )}
         </div>
       </div>
+
+      {latestFiling && (
+        <Card className="border-brand-200 bg-brand-50">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <FileCheck2 className="h-6 w-6 text-brand-700" />
+              <div>
+                <p className="font-bold text-brand-950">
+                  State filing · {latestFiling.state.name}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Status:{" "}
+                  <span className="font-semibold">
+                    {FILING_STATUS_LABEL[latestFiling.status]}
+                  </span>
+                  {latestFiling.confirmationNumber
+                    ? ` · Confirmation #${latestFiling.confirmationNumber}`
+                    : ""}
+                </p>
+              </div>
+            </div>
+            {latestFiling.status === "FILED" ? (
+              <Badge tone="green">Officially registered 🎉</Badge>
+            ) : latestFiling.status === "NEEDS_ATTENTION" || latestFiling.status === "REJECTED" ? (
+              <Badge tone="red">We&apos;re on it</Badge>
+            ) : (
+              <Badge tone="amber">Being filed — typically 1–3 business days</Badge>
+            )}
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

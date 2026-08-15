@@ -151,3 +151,105 @@ export async function buildFormationPdf(opts: {
 
   return pdfDoc.save();
 }
+
+/**
+ * Ops-assisted filing package: a cover sheet with the submission checklist and
+ * portal links, followed by the signed Articles of Organization / Incorporation.
+ */
+export async function buildFilingPackagePdf(opts: {
+  type: FormationType;
+  stateName: string;
+  stateCode: string;
+  data: DocData;
+  signature?: string | null;
+  signedAt?: Date | null;
+  businessName: string;
+  principalAddress: string;
+  registeredAgentName: string;
+  stateFeeCents: number;
+  filingProvider: string;
+  sosSiteUrl: string;
+  nameSearchUrl: string | null;
+}): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const page = pdfDoc.addPage([612, 792]);
+  const { width, height } = page.getSize();
+  const margin = 56;
+  let y = height - margin;
+
+  const drawLine = (yy: number) => {
+    page.drawLine({ start: { x: margin, y: yy }, end: { x: width - margin, y: yy }, thickness: 1, color: LINE });
+  };
+
+  page.drawText("ATLAS BUSINESS SYSTEM", { x: margin, y, size: 10, font: bold, color: GRAY });
+  y -= 24;
+  page.drawText("FILING SUBMISSION PACKAGE", { x: margin, y, size: 20, font: bold, color: DARK });
+  y -= 18;
+  page.drawText(`State of ${opts.stateName} (${opts.stateCode}) · ${opts.type === "LLC" ? "Limited Liability Company" : opts.type === "FOR_PROFIT" ? "For-Profit Corporation" : "Non-Profit Corporation"}`, { x: margin, y, size: 10, font, color: GRAY });
+  y -= 34;
+
+  const kv = (label: string, value: string) => {
+    y -= 16;
+    page.drawText(label.toUpperCase(), { x: margin, y, size: 8, font: bold, color: GRAY });
+    y -= 14;
+    page.drawText(value || "—", { x: margin, y, size: 11, font, color: DARK });
+    y -= 18;
+  };
+
+  kv("Business name", opts.businessName);
+  kv("Principal office address", opts.principalAddress);
+  kv("Registered agent", opts.registeredAgentName);
+  kv("State filing fee", usd(opts.stateFeeCents));
+  kv("Submission mode", opts.filingProvider === "ops" ? "Operations team — submit via state portal" : opts.filingProvider);
+  kv("Signed by", opts.signature ?? "—");
+  kv("Signed on", opts.signedAt ? opts.signedAt.toLocaleDateString("en-US") : "—");
+
+  y -= 16;
+  drawLine(y);
+  y -= 20;
+  page.drawText("OPERATOR CHECKLIST", { x: margin, y, size: 11, font: bold, color: DARK });
+  y -= 22;
+  const steps = [
+    "1. Open the state portal and re-check the business name is still available (see links below).",
+    "2. Log in or create the filing account for the state portal.",
+    "3. Submit the attached Articles document (pages 2+).",
+    "4. Pay the state filing fee with the company card.",
+    "5. Copy the confirmation/reference number into Atlas and mark the filing as FILED.",
+    "6. If the state rejects the filing, record the reason in Atlas and correct/refile.",
+  ];
+  for (const s of steps) {
+    page.drawText(s, { x: margin, y, size: 10, font, color: DARK });
+    y -= 16;
+  }
+
+  y -= 12;
+  drawLine(y);
+  y -= 20;
+  page.drawText("PORTAL LINKS", { x: margin, y, size: 11, font: bold, color: DARK });
+  y -= 22;
+  page.drawText(`State SOS site: ${opts.sosSiteUrl}`, { x: margin, y, size: 9, font, color: GRAY });
+  y -= 14;
+  page.drawText(`Name search: ${opts.nameSearchUrl ?? "(see SOS site)"}`, { x: margin, y, size: 9, font, color: GRAY });
+
+  // Append the signed Articles of Organization / Incorporation.
+  const articles = await buildFormationPdf({
+    type: opts.type,
+    stateName: opts.stateName,
+    stateCode: opts.stateCode,
+    data: opts.data,
+    signature: opts.signature,
+    signedAt: opts.signedAt,
+  });
+  const articlesDoc = await PDFDocument.load(articles);
+  const copied = await pdfDoc.copyPages(articlesDoc, articlesDoc.getPageIndices());
+  copied.forEach((p) => pdfDoc.addPage(p));
+
+  return pdfDoc.save();
+}
+
+function usd(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { maybeSendPaymentReceived } from "@/lib/email";
+import { ensureFilingForFormation } from "@/lib/filings";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,6 +15,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   // Notify the client (skipped silently until an account exists — claimed on signup).
   await maybeSendPaymentReceived(id);
+
+  // Queue the filing for submission once the document is built.
+  await ensureFilingForFormation(id);
 
   return NextResponse.json({ ok: true });
 }
