@@ -180,6 +180,12 @@ const BANK_STATUS_CONTENT: Record<
     body: `Great news — your application for <strong>{business}</strong> was approved. Our backend
        office is now setting up your account, and we'll reach out once it's ready.`,
   },
+  entered: {
+    title: "Your banking details are being entered 🔍",
+    subject: "Banking application — data entered",
+    body: `Your details for <strong>{business}</strong> are now being entered into the banking
+       system by our backend office. We'll let you know as soon as your account is set up.`,
+  },
   rejected: {
     title: "Your banking application needs attention",
     subject: "Banking application needs attention",

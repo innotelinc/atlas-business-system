@@ -14,7 +14,10 @@ async function main() {
     update: {},
     create: {
       id: "single",
-      serviceFeeCents: 4900, // our $49 formation service fee
+      serviceFeeCents: 4900, // our $49 formation service fee (default)
+      serviceFeeCentsLLC: 4900,
+      serviceFeeCentsForProfit: 4900,
+      serviceFeeCentsNonProfit: 4900,
       competitorRetailCents: 19900, // typical online retail (e.g. $199 incl. state fee)
       competitorName: "leading online formation services (e.g., ZenBusiness, LegalZoom)",
     },

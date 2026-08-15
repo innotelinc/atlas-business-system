@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getServiceFeeCents } from "@/lib/pricing";
 
 const patchSchema = z.object({
   businessName: z.string().optional().nullable(),
@@ -111,7 +112,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .filter((s) => !s.service.recurring)
     .reduce((sum, s) => sum + s.service.priceCents * s.quantity, 0);
   const stateFeeCents = fee?.stateFeeCents ?? 0;
-  const serviceFeeCents = pricing?.serviceFeeCents ?? 0;
+  const serviceFeeCents = getServiceFeeCents(pricing, existing.type);
   await prisma.formation.update({
     where: { id },
     data: {
