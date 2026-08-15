@@ -98,8 +98,11 @@ Set `RESEND_API_KEY` and optionally `EMAIL_FROM`. **Without a key, emails are lo
 ```
 prisma/
   schema.prisma          # data model
-  seed.ts                # seed script
-  seed-data/states.ts    # 50-state SOS links + filing fees
+  seed.ts                # seed script (never clobbers verified fee rows)
+  seed-data/states.ts    # 50-state SOS links + unverified starting fees
+  seed-data/verified-states.ts  # verified fees for all 50 states × 3 entity types
+scripts/
+  verify-fees.ts         # applies verified fee data (verified = true, source notes)
 src/
   app/
     page.tsx             # landing page
@@ -118,7 +121,7 @@ src/
 
 ## Important notes
 
-- **Filing fees are best-effort starting values.** State fee schedules change; every fee row is seeded with `verified = false`. Review and correct them in the admin console (`/admin/states`), then flip the verified flag. SOS document PDF URLs are also managed there.
+- **Filing fees are verified for all 50 states (verified 2026-08-15).** Every `StateFee` row was checked against the official Secretary of State (or equivalent agency) fee schedule or regulation; each row carries a source note with the citation, and `verified = true`. Apply (or re-apply after state fee changes) with `pnpm db:verify-fees`, then review in `/admin/states`. Notable 2026 changes baked in: Delaware raised fees Aug 1 2026 (LLC $110, corp $109), Kansas cut fees Feb 2026 (LLC $85, corp $75, nonprofit $20), New Jersey reduced fees (LLC/corp $100, nonprofit $50), Vermont LLC/corp/nonprofit now $155.
 - **Name checks link out to each state's official SOS business-name search** — no public API covers all 50 states. An analyst re-verifies availability during the 24h review step.
 - The bank application form collects personal data (DOB, SSN last 4). In production, encrypt at rest and review retention/handling with legal counsel before launch.
 - The 24h analyst review is a background status (`analystReview`) — it never blocks the client's formation or portal access.
@@ -131,5 +134,6 @@ src/
 | `pnpm build`      | Production build + type check            |
 | `pnpm db:migrate` | Apply Prisma migrations                  |
 | `pnpm db:seed`    | Seed states, services, checklist, users  |
+| `pnpm db:verify-fees` | Apply verified 50-state fee data (sets `verified = true`) |
 | `pnpm db:studio`  | Browse the database with Prisma Studio   |
 | `pnpm cron:ein-reminders` | Send weekly EIN reminders (run daily via a scheduler) |

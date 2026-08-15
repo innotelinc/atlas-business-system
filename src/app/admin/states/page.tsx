@@ -16,8 +16,9 @@ export default async function StatesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-brand-950">States & filing fees</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Secretary of State links and per-type filing fees. Fees are best-effort starting values —
-          verify against each SOS fee schedule and flip the verified flag.
+          Secretary of State links and per-type filing fees. All 50 states were verified on
+          2026-08-15 against official SOS fee schedules — hover the source note under each fee for
+          the citation. Use the editor to adjust and re-verify as states change their fees.
         </p>
       </div>
 

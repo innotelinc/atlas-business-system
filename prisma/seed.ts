@@ -39,6 +39,11 @@ async function main() {
     });
     for (const type of FORMATION_TYPES) {
       const fee = s.fees[type];
+      // Never clobber rows that have been verified (see scripts/verify-fees.ts).
+      const existing = await prisma.stateFee.findUnique({
+        where: { stateCode_type: { stateCode: s.code, type } },
+      });
+      if (existing?.verified) continue;
       await prisma.stateFee.upsert({
         where: { stateCode_type: { stateCode: s.code, type } },
         update: {
