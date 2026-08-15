@@ -2,7 +2,11 @@ import { Resend } from "resend";
 import { prisma } from "./prisma";
 import { usd, formatType } from "./format";
 
-export type EmailType = "payment_received" | "analyst_approved" | "ein_reminder";
+export type EmailType =
+  | "payment_received"
+  | "analyst_approved"
+  | "ein_reminder"
+  | "filing_filed";
 
 // Without RESEND_API_KEY, emails are logged to the console and recorded in the
 // SentEmail table with status "logged" so the flow is testable in development.
@@ -127,6 +131,31 @@ export function analystApprovedEmail(opts: {
   return { subject, html };
 }
 
+export function filingFiledEmail(opts: {
+  businessName: string;
+  stateName: string;
+  type: string;
+  confirmationNumber: string | null;
+}): { subject: string; html: string } {
+  const subject = `🎉 ${opts.businessName} is officially registered in ${opts.stateName}`;
+  const html = shell(
+    "Your business is officially registered ✅",
+    `<p style="margin:0 0 12px;color:#334155;font-size:15px;line-height:1.6;">
+       Congratulations! Your <strong>${formatType(opts.type)}</strong>,
+       <strong>${opts.businessName}</strong>, has been filed and approved by the
+       <strong>${opts.stateName}</strong> Secretary of State.${opts.confirmationNumber ? ` Your confirmation number is <strong>${opts.confirmationNumber}</strong>.` : ""}
+     </p>
+     <p style="margin:0 0 12px;color:#334155;font-size:15px;line-height:1.6;">
+       Your business is officially open — now knock out the startup checklist:
+       EIN, Dun &amp; Bradstreet, business banking, and your first Net-30 accounts.
+     </p>
+     <a href="${getAppUrl()}/portal" style="display:inline-block;background:#0b1b3b;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;font-size:14px;">
+       Open your client portal
+     </a>`,
+  );
+  return { subject, html };
+}
+
 export function einReminderEmail(opts: { businessName: string }): { subject: string; html: string } {
   const subject = `Reminder: get your EIN for ${opts.businessName}`;
   const html = shell(
@@ -190,4 +219,20 @@ export async function maybeSendAnalystApproved(formationId: string) {
   });
   await sendEmail({ to: formation.user.email, subject, html, type: "analyst_approved", formationId });
   await prisma.formation.update({ where: { id: formationId }, data: { analystEmailSent: true } });
+}
+
+export async function maybeSendFilingFiled(formationId: string, confirmationNumber: string | null) {
+  const formation = await prisma.formation.findUnique({
+    where: { id: formationId },
+    include: { user: true, state: true },
+  });
+  if (!formation || !formation.user?.email) return; // no account yet — will be caught up on claim
+
+  const { subject, html } = filingFiledEmail({
+    businessName: formation.businessName ?? "your business",
+    type: formation.type,
+    stateName: formation.state?.name ?? "your state",
+    confirmationNumber,
+  });
+  await sendEmail({ to: formation.user.email, subject, html, type: "filing_filed", formationId });
 }

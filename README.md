@@ -22,9 +22,11 @@ A U.S. business formation platform covering **all 50 states** and three entity t
 
 **Admin console** (`/admin`)
 - Formations queue with filters; analyst approve/reject with notes (24h review step)
+- **Filing queue** (`/admin/filings`) — every paid formation is automatically queued for submission once its document is built. Each filing ships as a single PDF package: an operator cover sheet (state, fees, submission checklist, portal links) merged with the signed Articles. Operations submits via the state's official online filing system and records the result — submitted, filed (with confirmation number), needs attention, or rejected — all workflow-enforced with a full status history. When a filing is marked filed, the formation is marked FILED, the established date is recorded, and the client gets a “you're officially registered” email.
 - Relay bank applications queue (forward → complete)
 - States & fees editor — update SOS links, per-type filing fees, form PDF URLs, and mark fees verified
 - Services and checklist item management
+- Email log — every client notification, delivered or logged
 
 ## Tech stack
 
@@ -72,6 +74,12 @@ Change both in `.env` / the seed before any production use.
 
 Set `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET`, then point a webhook at `POST /api/webhooks/stripe` for `checkout.session.completed`. Without keys, the checkout step runs in **demo mode** (simulated payment) so the whole flow is testable end to end.
 
+### Automated filing (ops-assisted)
+
+Paid formations are automatically queued as a `Filing` record (status `READY`). The admin filing queue shows everything ready to submit; each filing includes a generated **submission package PDF** (operator cover sheet + signed Articles) and direct links to the state's SOS portal and name search. Status transitions are enforced (`READY → SUBMITTED → FILED`, with `NEEDS_ATTENTION` / `REJECTED` for exceptions and refiling), recorded in a history trail, and drive formation status, the client's established date, and the “officially registered” email.
+
+There is no single API covering all 50 Secretaries of State, so the submission step is performed by operations through each state's official online portal — the same model the major formation services use. The `State.filingProvider` field (default `ops`) is the per-state hook where a state API or white-label provider can be plugged in later without rework.
+
 ### Email notifications (Resend)
 
 Client notifications are sent via [Resend](https://resend.com) (free tier: 3,000 emails/month):
@@ -80,6 +88,7 @@ Client notifications are sent via [Resend](https://resend.com) (free tier: 3,000
 | ------- | ----- |
 | Payment received | Sent on Stripe `checkout.session.completed` (or demo payment). If the client hasn't created an account yet, it's sent automatically when they claim their formation. |
 | Analyst approved | Sent when an admin approves the formation review (or on claim, if approval happened before signup). |
+| Filed with state | Sent when a filing is marked FILED in the admin filing queue (confirmation number included). |
 | EIN reminders | Weekly reminder to obtain an EIN. Run the job daily: `pnpm cron:ein-reminders` — schedule it with Vercel Cron, GitHub Actions, cron, etc. Sends at most once every 7 days per formation. |
 
 Set `RESEND_API_KEY` and optionally `EMAIL_FROM`. **Without a key, emails are logged to the console and to the admin Email log (`/admin/emails`) with status `logged` instead of being delivered.**

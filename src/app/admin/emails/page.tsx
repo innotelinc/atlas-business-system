@@ -17,7 +17,9 @@ export default async function EmailsPage() {
         ? "Analyst approved"
         : t === "ein_reminder"
           ? "EIN reminder"
-          : t;
+          : t === "filing_filed"
+            ? "Filed with state"
+            : t;
 
   const statusTone = (s: string) =>
     s === "sent" ? "green" : s === "logged" ? "amber" : "red";
