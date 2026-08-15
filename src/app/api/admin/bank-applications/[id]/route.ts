@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 const schema = z.object({
-  status: z.enum(["received", "forwarded", "completed"]),
+  status: z.enum(["received", "in_review", "approved", "rejected", "completed"]),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
