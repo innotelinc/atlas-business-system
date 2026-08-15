@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Badge, Card } from "@/components/ui";
 import { BankApplicationForm } from "@/components/portal/BankApplicationForm";
+import { BankStatusTimeline } from "@/components/portal/BankStatusTimeline";
 
 export const dynamic = "force-dynamic";
 
@@ -43,28 +44,18 @@ export default async function BankPage() {
         </p>
       </div>
 
-      {existing && existing.status !== "completed" && (
-        <Card
-          className={
-            existing.status === "rejected"
-              ? "border-red-200 bg-red-50"
-              : "border-emerald-200 bg-emerald-50"
-          }
-        >
-          <div className="flex items-center gap-2">
+      {existing && (
+        <Card>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-brand-900">
+              Application status
+            </h2>
             <Badge tone={STATUS_TONE[existing.status] ?? "slate"}>
               {STATUS_LABEL[existing.status] ?? existing.status}
             </Badge>
-            <p className="text-sm font-medium text-slate-700">
-              {existing.status === "received" &&
-                "Your application has been received. We'll begin the review once your formation is filed."}
-              {existing.status === "in_review" &&
-                "Your application is being reviewed by our team. We'll reach out with next steps."}
-              {existing.status === "approved" &&
-                "Your application was approved. Our backend office is setting up your account now."}
-              {existing.status === "rejected" &&
-                "We couldn't process your application as submitted. Please contact us or resubmit with corrected details."}
-            </p>
+          </div>
+          <div className="mt-5">
+            <BankStatusTimeline status={existing.status} />
           </div>
         </Card>
       )}
