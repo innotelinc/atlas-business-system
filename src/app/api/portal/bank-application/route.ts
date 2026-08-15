@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { maybeSendBankStatus } from "@/lib/email";
 
 const schema = z.object({
   businessName: z.string().min(1),
@@ -42,6 +43,14 @@ export async function POST(req: Request) {
       address: body.address ?? null,
       notes: body.notes ?? null,
     },
+  });
+
+  // Confirm receipt so the client knows their application is in.
+  await maybeSendBankStatus({
+    to: app.email,
+    businessName: app.businessName,
+    status: "received",
+    formationId: app.formationId,
   });
 
   return NextResponse.json({ ok: true, id: app.id });
