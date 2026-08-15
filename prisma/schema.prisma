@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum FormationType {
+  LLC
+  FOR_PROFIT
+  NON_PROFIT
+}
+
+enum FormationStatus {
+  DRAFT
+  NAME_CHECK
+  DOCUMENT_BUILD
+  SIGNED
+  PAYMENT_PENDING
+  PAID
+  FILED
+  COMPLETED
+  CANCELLED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String?
+  role         Role        @default(CLIENT)
+  formations   Formation[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model State {
+  code          String       @id
+  name          String
+  sosSiteUrl    String
+  nameSearchUrl String?
+  notes         String?
+  fees          StateFee[]
+  formations    Formation[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model StateFee {
+  id            String        @id @default(cuid())
+  stateCode     String
+  state         State         @relation(fields: [stateCode], references: [code], onDelete: Cascade)
+  type          FormationType
+  stateFeeCents Int
+  documentUrl   String?
+  filingTime    String?
+  verified      Boolean       @default(false)
+  sourceNote    String?
+
+  @@unique([stateCode, type])
+}
+
+model Service {
+  id            String              @id @default(cuid())
+  key           String              @unique
+  name          String
+  description   String?
+  priceCents    Int
+  recurring     Boolean             @default(false)
+  interval      String?
+  stripePriceId String?
+  active        Boolean             @default(true)
+  sortOrder     Int                 @default(0)
+  formations    FormationService[]
+}
+
+model PricingConfig {
+  id                   String @id @default("single")
+  serviceFeeCents      Int    @default(4900)
+  competitorRetailCents Int   @default(19900)
+  competitorName       String @default("leading online formation services")
+}
+
+model Formation {
+  id               String             @id @default(cuid())
+  userId           String?
+  user             User?              @relation(fields: [userId], references: [id])
+  type             FormationType
+  stateCode        String?
+  state            State?             @relation(fields: [stateCode], references: [code])
+  businessName     String?
+  status           FormationStatus    @default(DRAFT)
+  paymentStatus    String             @default("unpaid")
+  stripeCheckoutId String?            @unique
+  stripeCustomerId String?
+  contractSignedAt DateTime?
+  signature        String?
+  analystReview    ReviewStatus       @default(PENDING)
+  analystNotes     String?
+  analystReviewedAt DateTime?
+  portalAccess     Boolean            @default(false)
+  stateFeeCents    Int                @default(0)
+  serviceFeeCents  Int                @default(0)
+  totalCents       Int                @default(0)
+  nameCheck        NameCheck?
+  document         Document?
+  credentials      Credentials?
+  services         FormationService[]
+  bankApplications BankApplication[]
+  checklistEntries ChecklistEntry[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model NameCheck {
+  id               String    @id @default(cuid())
+  formationId      String    @unique
+  formation        Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  sosSearched      Boolean   @default(false)
+  sosSearchUrl     String?
+  sosResults       String?
+  claimedAvailable Boolean   @default(false)
+  similarNames     String?
+  checkedAt        DateTime?
+}
+
+model Document {
+  id          String    @id @default(cuid())
+  formationId String    @unique
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  data        Json
+  pdfUrl      String?
+  generatedAt DateTime?
+}
+
+model Credentials {
+  id              String    @id @default(cuid())
+  formationId     String    @unique
+  formation       Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  ein             String?
+  establishedDate DateTime?
+  officers        Json?
+  address         String?
+  phone           String?
+  email           String?
+  website         String?
+}
+
+model FormationService {
+  formationId String
+  serviceId   String
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  quantity    Int       @default(1)
+
+  @@id([formationId, serviceId])
+}
+
+model ChecklistItem {
+  id          String           @id @default(cuid())
+  section     String
+  title       String
+  description String?
+  url         String?
+  urlLabel    String?
+  sortOrder   Int              @default(0)
+  active      Boolean          @default(true)
+  entries     ChecklistEntry[]
+}
+
+model ChecklistEntry {
+  id          String         @id @default(cuid())
+  formationId String
+  formation   Formation      @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  itemId      String
+  item        ChecklistItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  completed   Boolean        @default(false)
+  completedAt DateTime?
+  value       String?
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([formationId, itemId])
+}
+
+model BankApplication {
+  id           String     @id @default(cuid())
+  formationId  String?
+  formation    Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
+  status       String     @default("received")
+  businessName String
+  legalName    String
+  email        String
+  phone        String
+  dob          String?
+  ssn          String?
+  address      String?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
