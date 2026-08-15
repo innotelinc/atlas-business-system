@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getServiceFeeCents } from "@/lib/pricing";
 
 const schema = z.object({
   businessName: z.string().min(1),
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     where: { stateCode_type: { stateCode, type: body.type } },
   });
   const pricing = await prisma.pricingConfig.findUnique({ where: { id: "single" } });
+  const serviceFeeCents = getServiceFeeCents(pricing, body.type);
 
   const formation = await prisma.formation.create({
     data: {
@@ -47,8 +49,8 @@ export async function POST(req: Request) {
       businessName: body.businessName,
       status: body.status ?? "DRAFT",
       stateFeeCents: fee?.stateFeeCents ?? 0,
-      serviceFeeCents: pricing?.serviceFeeCents ?? 0,
-      totalCents: (fee?.stateFeeCents ?? 0) + (pricing?.serviceFeeCents ?? 0),
+      serviceFeeCents,
+      totalCents: (fee?.stateFeeCents ?? 0) + serviceFeeCents,
     },
   });
 

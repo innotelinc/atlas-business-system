@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, FileCheck2, LayoutDashboard, ListChecks, Landmark, Mail, MessageSquare, ShieldCheck, Tags, FileText } from "lucide-react";
+import { Building2, DollarSign, FileCheck2, LayoutDashboard, ListChecks, Landmark, Mail, MessageSquare, ShieldCheck, Tags, FileText } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { LogoutButton } from "@/components/portal/LogoutButton";
 
@@ -14,6 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/filings", label: "Filings", icon: FileCheck2 },
     { href: "/admin/bank-applications", label: "Bank applications", icon: Landmark },
     { href: "/admin/states", label: "States & fees", icon: Building2 },
+    { href: "/admin/pricing", label: "Pricing & fees", icon: DollarSign },
     { href: "/admin/services", label: "Services", icon: Tags },
     { href: "/admin/checklist", label: "Checklist", icon: ListChecks },
     { href: "/admin/emails", label: "Email log", icon: Mail },

@@ -105,10 +105,13 @@ model Service {
 }
 
 model PricingConfig {
-  id                   String @id @default("single")
-  serviceFeeCents      Int    @default(4900)
-  competitorRetailCents Int   @default(19900)
-  competitorName       String @default("leading online formation services")
+  id                    String @id @default("single")
+  serviceFeeCents       Int    @default(4900)
+  serviceFeeCentsLLC    Int    @default(4900)
+  serviceFeeCentsForProfit Int @default(4900)
+  serviceFeeCentsNonProfit Int @default(4900)
+  competitorRetailCents Int    @default(19900)
+  competitorName        String @default("leading online formation services")
 }
 
 model Formation {
@@ -276,18 +279,21 @@ model SentEmail {
 }
 
 model BankApplication {
-  id           String     @id @default(cuid())
-  formationId  String?
-  formation    Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
-  status       String     @default("received")
-  businessName String
-  legalName    String
-  email        String
-  phone        String
-  dob          String?
-  ssn          String?
-  address      String?
-  notes        String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id               String     @id @default(cuid())
+  formationId      String?
+  formation        Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
+  status           String     @default("received")
+  businessName     String
+  legalName        String
+  email            String
+  phone            String
+  dob              String?
+  ssn              String?
+  address          String?
+  notes            String?
+  detailsVerified  Boolean    @default(false)
+  detailsVerifiedAt DateTime?
+  enteredAt        DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }

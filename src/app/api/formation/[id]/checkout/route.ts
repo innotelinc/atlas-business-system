@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getPricingConfig, computeTotals, type ServiceLine } from "@/lib/pricing";
+import { getPricingConfig, getServiceFeeCents, computeTotals, type ServiceLine } from "@/lib/pricing";
 import { stripe, stripeEnabled, getAppUrl } from "@/lib/stripe";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,7 +18,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     where: { stateCode_type: { stateCode: formation.stateCode, type: formation.type } },
   });
   const pricing = await getPricingConfig();
-  const serviceFeeCents = pricing?.serviceFeeCents ?? 0;
+  const serviceFeeCents = getServiceFeeCents(pricing, formation.type);
   const stateFeeCents = fee?.stateFeeCents ?? 0;
 
   const services: ServiceLine[] = formation.services.map((fs) => ({

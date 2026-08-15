@@ -8,6 +8,7 @@ const FLOW: { key: BankAppStatus; label: string }[] = [
   { key: "received", label: "Received" },
   { key: "in_review", label: "Analyst review" },
   { key: "approved", label: "Approved for setup" },
+  { key: "entered", label: "Data entered" },
   { key: "completed", label: "Account set up" },
 ];
 
@@ -15,12 +16,13 @@ const STATUS_LABEL: Record<string, string> = {
   received: "Received",
   in_review: "In review",
   approved: "Approved",
+  entered: "Data entered",
   rejected: "Rejected",
   completed: "Completed",
 };
 
 const statusTone = (s: string): "green" | "blue" | "amber" | "red" | "slate" =>
-  s === "completed" ? "green" : s === "approved" ? "blue" : s === "in_review" ? "amber" : s === "rejected" ? "red" : "slate";
+  s === "completed" ? "green" : s === "approved" ? "blue" : s === "in_review" || s === "entered" ? "amber" : s === "rejected" ? "red" : "slate";
 
 function Stepper({ status }: { status: string }) {
   if (status === "rejected") {
@@ -77,15 +79,16 @@ export default async function BankApplicationsPage() {
       {/* Flow explainer */}
       <Card className="border-brand-100 bg-brand-50/40">
         <h2 className="text-sm font-bold uppercase tracking-wide text-brand-900">Application flow</h2>
-        <ol className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-4">
+        <ol className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-5">
           {FLOW.map((f, i) => (
             <li key={f.key} className="rounded-lg bg-white p-3 shadow-sm">
               <span className="font-bold text-brand-700">Step {i + 1}</span>
               <p className="mt-0.5 font-semibold">{f.label}</p>
               <p className="mt-0.5 text-xs text-slate-500">
                 {f.key === "received" && "Client submits the application from their portal."}
-                {f.key === "in_review" && "An analyst reviews the details and identity info."}
-                {f.key === "approved" && "The backend office begins manual account setup."}
+                {f.key === "in_review" && "An analyst reviews the details and verifies identity info."}
+                {f.key === "approved" && "Approved for setup by the backend office."}
+                {f.key === "entered" && "Details are entered into the banking system."}
                 {f.key === "completed" && "Account is opened; the client is notified."}
               </p>
             </li>
@@ -129,9 +132,17 @@ export default async function BankApplicationsPage() {
                     Formation: {app.formation.businessName ?? app.formation.id}
                   </p>
                 )}
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {app.detailsVerified ? (
+                    <Badge tone="green">Info verified</Badge>
+                  ) : (
+                    <Badge tone="slate">Info not yet verified</Badge>
+                  )}
+                  {app.enteredAt && <Badge tone="blue">Entered</Badge>}
+                </div>
                 <Stepper status={app.status} />
               </div>
-              <BankAppActions id={app.id} status={app.status} />
+              <BankAppActions app={app} />
             </div>
             {(app.dob || app.ssn || app.address || app.notes) && (
               <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getDraftId, getSession } from "@/lib/auth";
-import { computeTotals, getPricingConfig, type ServiceLine } from "@/lib/pricing";
+import { computeTotals, getPricingConfig, getServiceFeeCents, type ServiceLine } from "@/lib/pricing";
 import { getFormFields } from "@/lib/form-templates";
 
 export async function GET() {
@@ -56,7 +56,7 @@ export async function GET() {
 
   const totals = computeTotals(
     fee?.stateFeeCents ?? 0,
-    pricing?.serviceFeeCents ?? 0,
+    getServiceFeeCents(pricing, formation.type),
     services.filter((s) => s.selected),
   );
 
@@ -98,7 +98,7 @@ export async function GET() {
       : null,
     pricing: pricing
       ? {
-          serviceFeeCents: pricing.serviceFeeCents,
+          serviceFeeCents: getServiceFeeCents(pricing, formation.type),
           competitorRetailCents: pricing.competitorRetailCents,
           competitorName: pricing.competitorName,
         }

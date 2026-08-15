@@ -3,7 +3,8 @@ import { Check } from "lucide-react";
 const STEPS = [
   { key: "received", label: "Received", desc: "We received your application." },
   { key: "in_review", label: "In review", desc: "Our team is reviewing your details." },
-  { key: "approved", label: "Approved", desc: "Account setup is in progress with our backend office." },
+  { key: "approved", label: "Approved", desc: "Your application was approved for account setup." },
+  { key: "entered", label: "Data entered", desc: "Your details are being entered into the banking system." },
   { key: "completed", label: "Account set up", desc: "Your business bank account is ready." },
 ] as const;
 

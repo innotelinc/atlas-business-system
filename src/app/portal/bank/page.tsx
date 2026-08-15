@@ -10,6 +10,7 @@ const STATUS_LABEL: Record<string, string> = {
   received: "Received",
   in_review: "In review",
   approved: "Approved — account setup in progress",
+  entered: "Data entered — account setup in progress",
   rejected: "Needs attention",
   completed: "Completed",
 };
@@ -18,6 +19,7 @@ const STATUS_TONE: Record<string, "green" | "amber" | "blue" | "red" | "slate"> 
   received: "slate",
   in_review: "amber",
   approved: "blue",
+  entered: "blue",
   rejected: "red",
   completed: "green",
 };
