@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:verify-fees": "tsx --env-file=.env scripts/verify-fees.ts",
     "db:studio": "prisma studio",
     "cron:ein-reminders": "tsx --env-file=.env scripts/ein-reminders.ts"
   },

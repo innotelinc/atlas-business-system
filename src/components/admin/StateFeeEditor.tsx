@@ -10,6 +10,7 @@ type Fee = {
   documentUrl: string | null;
   filingTime: string | null;
   verified: boolean;
+  sourceNote: string | null;
 };
 
 export function StateFeeEditor({
@@ -50,6 +51,7 @@ export function StateFeeEditor({
               documentUrl: fee.documentUrl,
               filingTime: fee.filingTime,
               verified: fee.verified,
+              sourceNote: fee.sourceNote,
             },
           }),
         });
@@ -143,6 +145,12 @@ export function StateFeeEditor({
                   />
                 </div>
               </div>
+              {fee.sourceNote && (
+                <p className="mt-2 text-[11px] leading-snug text-slate-400">
+                  {fee.verified ? "✓ " : ""}
+                  {fee.sourceNote}
+                </p>
+              )}
             </div>
           );
         })}
