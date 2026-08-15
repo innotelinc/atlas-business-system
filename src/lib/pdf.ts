@@ -50,10 +50,17 @@ class Doc {
     return PAGE_W;
   }
 
-  /** Start a new page and draw the slim running header. */
+  /** Start a new page and draw the slim running header (brand left, title right). */
   newPage() {
     this.page = this.pdf.addPage([PAGE_W, PAGE_H]);
     this.y = PAGE_H - MARGIN;
+    this.page.drawText("ATLAS BUSINESS SYSTEM", {
+      x: MARGIN,
+      y: PAGE_H - 26,
+      size: 7,
+      font: this.bold,
+      color: GRAY,
+    });
     this.page.drawText(this.runningTitle, {
       x: PAGE_W - MARGIN - this.font.widthOfTextAtSize(this.runningTitle, 7),
       y: PAGE_H - 26,
@@ -167,15 +174,85 @@ class Doc {
     this.y -= 4;
   }
 
+  /** Boxed "FOR OFFICE USE ONLY" stamp block (file no / received / approved). */
+  officeUseBox() {
+    const boxH = 74;
+    this.ensure(boxH + 70);
+    this.y -= 10;
+    const boxTop = this.y;
+    this.page.drawRectangle({
+      x: MARGIN,
+      y: boxTop - boxH,
+      width: PAGE_W - MARGIN * 2,
+      height: boxH,
+      color: FAINT,
+      borderColor: LINE,
+      borderWidth: 1,
+    });
+    this.page.drawText("FOR OFFICE USE ONLY", { x: MARGIN + 14, y: boxTop - 20, size: 7.5, font: this.bold, color: GRAY });
+    const labels = ["FILE NO.", "DATE RECEIVED", "APPROVED BY"];
+    const colW = (PAGE_W - MARGIN * 2 - 28) / labels.length;
+    labels.forEach((lab, i) => {
+      const x = MARGIN + 14 + i * colW;
+      this.page.drawText(lab, { x, y: boxTop - 40, size: 7, font: this.bold, color: GRAY });
+      this.page.drawLine({
+        start: { x: x + this.bold.widthOfTextAtSize(lab, 7) + 8, y: boxTop - 52 },
+        end: { x: x + colW - 8, y: boxTop - 52 },
+        thickness: 0.6,
+        color: LINE,
+      });
+    });
+    this.y = boxTop - boxH - 14;
+  }
+
+  /** Boxed operator sign-off block (prepared / reviewed by) for the package cover. */
+  operatorSignOff() {
+    const boxH = 66;
+    this.ensure(boxH + 40);
+    this.y -= 12;
+    const boxTop = this.y;
+    this.page.drawRectangle({
+      x: MARGIN,
+      y: boxTop - boxH,
+      width: PAGE_W - MARGIN * 2,
+      height: boxH,
+      color: FAINT,
+      borderColor: LINE,
+      borderWidth: 1,
+    });
+    const inner = MARGIN + 16;
+    const dateX = PAGE_W - MARGIN - 118;
+    const dateLine = PAGE_W - MARGIN - 16;
+    const rows = [
+      { label: "PREPARED BY", x: inner, y: boxTop - 22 },
+      { label: "DATE", x: dateX, y: boxTop - 22 },
+      { label: "REVIEWED BY", x: inner, y: boxTop - 46 },
+      { label: "DATE", x: dateX, y: boxTop - 46 },
+    ];
+    for (const r of rows) {
+      this.page.drawText(r.label, { x: r.x, y: r.y, size: 7, font: this.bold, color: GRAY });
+      this.page.drawLine({
+        start: { x: r.x + this.bold.widthOfTextAtSize(r.label, 7) + 6, y: r.y - 2 },
+        end: { x: r.x < inner + 100 ? dateX - 14 : dateLine, y: r.y - 2 },
+        thickness: 0.6,
+        color: LINE,
+      });
+    }
+    this.y = boxTop - boxH - 12;
+  }
+
   /** Draw the footer (brand left, page number right) on every page. */
-  footer(jurisdiction: string) {
+  footer(jurisdiction: string, opts: { pageNumbers?: boolean } = {}) {
+    const showNumbers = opts.pageNumbers !== false;
     const pages = this.pdf.getPages();
     pages.forEach((p, i) => {
       p.drawLine({ start: { x: MARGIN, y: 40 }, end: { x: PAGE_W - MARGIN, y: 40 }, thickness: 0.6, color: LINE });
       const left = `Atlas Business System · Prepared for ${jurisdiction} filing`;
       p.drawText(left, { x: MARGIN, y: 27, size: 7, font: this.font, color: GRAY });
-      const right = `Page ${i + 1} of ${pages.length}`;
-      p.drawText(right, { x: PAGE_W - MARGIN - this.font.widthOfTextAtSize(right, 7), y: 27, size: 7, font: this.font, color: GRAY });
+      if (showNumbers) {
+        const right = `Page ${i + 1} of ${pages.length}`;
+        p.drawText(right, { x: PAGE_W - MARGIN - this.font.widthOfTextAtSize(right, 7), y: 27, size: 7, font: this.font, color: GRAY });
+      }
     });
   }
 
@@ -205,8 +282,10 @@ export async function buildFormationPdf(opts: {
   data: DocData;
   signature?: string | null;
   signedAt?: Date | null;
+  /** When embedded inside another document, skip "Page X of Y" (the parent stamps it). */
+  suppressPageNumbers?: boolean;
 }): Promise<Uint8Array> {
-  const { type, stateName, stateCode, data, signature, signedAt } = opts;
+  const { type, stateName, stateCode, data, signature, signedAt, suppressPageNumbers } = opts;
   const businessName = (data.businessName as string) || "[Business Name]";
   const principalAddress = (data.principalAddress as string) || "";
   const registeredAgent = (data.registeredAgent as { name?: string; address?: string }) || {};
@@ -290,7 +369,10 @@ export async function buildFormationPdf(opts: {
     ack: `The undersigned acknowledges that this ${entityWord} will not be formed until the ${stateName} Secretary of State approves this filing, and that the information above is true and correct to the best of their knowledge.`,
   });
 
-  doc.footer(stateName);
+  doc.officeUseBox();
+  // When embedded in a filing package, the package stamps the footer on every
+  // page once (rule + brand + 1..N numbering); standalone, stamp it here.
+  if (!suppressPageNumbers) doc.footer(stateName);
 
   return pdfDoc.save();
 }
@@ -336,6 +418,9 @@ export async function buildFilingPackagePdf(opts: {
     tag: `INTERNAL PACKAGE · PREPARED BY ATLAS BUSINESS SYSTEM FOR ${stateName.toUpperCase()} FILING`,
   });
 
+  doc.heading("PACKAGE CONTENTS");
+  doc.field("This package contains", "1. Cover sheet with filing details, checklist and portal links · 2. Signed Articles document (appended below)");
+
   doc.heading("FILING DETAILS");
   doc.field("Business name", businessName);
   doc.field("Principal office address", principalAddress);
@@ -367,9 +452,11 @@ export async function buildFilingPackagePdf(opts: {
   doc.field("State SOS site", sosSiteUrl);
   doc.field("Business name search", nameSearchUrl ?? "(see SOS site)");
 
-  doc.footer(stateName);
+  doc.heading("OPERATOR SIGN-OFF");
+  doc.operatorSignOff();
 
-  // Append the signed Articles of Organization / Incorporation.
+  // Append the signed Articles (without their own page numbers), then stamp the
+  // footer on every page once so the combined document reads 1..N consistently.
   const articles = await buildFormationPdf({
     type,
     stateName,
@@ -377,10 +464,12 @@ export async function buildFilingPackagePdf(opts: {
     data,
     signature,
     signedAt,
+    suppressPageNumbers: true,
   });
   const articlesDoc = await PDFDocument.load(articles);
   const copied = await pdfDoc.copyPages(articlesDoc, articlesDoc.getPageIndices());
   copied.forEach((p) => pdfDoc.addPage(p));
+  doc.footer(stateName);
 
   return pdfDoc.save();
 }
