@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { maybeSendAnalystApproved } from "@/lib/email";
 
 const schema = z.object({
   decision: z.enum(["APPROVED", "REJECTED"]),
@@ -33,5 +34,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       analystReviewedAt: new Date(),
     },
   });
+
+  if (body.decision === "APPROVED") {
+    await maybeSendAnalystApproved(id);
+  }
+
   return NextResponse.json({ ok: true, formation: updated });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { maybeSendPaymentReceived, maybeSendAnalystApproved } from "@/lib/email";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -18,6 +19,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     where: { id },
     data: { userId: session.id, portalAccess: true },
   });
+
+  // Catch up on notifications that fired before an account existed.
+  await maybeSendPaymentReceived(id);
+  await maybeSendAnalystApproved(id);
 
   return NextResponse.json({ ok: true, formation: updated });
 }
