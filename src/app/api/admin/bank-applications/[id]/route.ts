@@ -29,11 +29,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const data: Record<string, unknown> = {};
   if (body.status !== undefined) {
     data.status = body.status;
-    // Record when the backend office marks the application as entered.
-    if (body.status === "entered" && existing.status !== "entered") {
+    // Record when the backend office first marks the application as entered
+    // (kept even after moving on to account setup).
+    if (body.status === "entered" && !existing.enteredAt) {
       data.enteredAt = new Date();
-    } else if (body.status !== "entered" && existing.enteredAt) {
-      data.enteredAt = null;
     }
   }
   if (body.detailsVerified !== undefined) {
