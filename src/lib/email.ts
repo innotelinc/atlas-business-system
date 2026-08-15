@@ -6,7 +6,8 @@ export type EmailType =
   | "payment_received"
   | "analyst_approved"
   | "ein_reminder"
-  | "filing_filed";
+  | "filing_filed"
+  | "bank_status";
 
 // Without RESEND_API_KEY, emails are logged to the console and recorded in the
 // SentEmail table with status "logged" so the flow is testable in development.
@@ -156,6 +157,60 @@ export function filingFiledEmail(opts: {
   return { subject, html };
 }
 
+const BANK_STATUS_CONTENT: Record<
+  string,
+  { title: string; subject: string; body: string }
+> = {
+  received: {
+    title: "Your banking application was received ✅",
+    subject: "Banking application received",
+    body: `We received your business banking application for <strong>{business}</strong>. Our team will
+       review it shortly — you'll get an update the moment it moves forward.`,
+  },
+  in_review: {
+    title: "Your banking application is in review 🔍",
+    subject: "Banking application in review",
+    body: `Our team is reviewing your application for <strong>{business}</strong>. We'll let you know as
+       soon as it's approved.`,
+  },
+  approved: {
+    title: "Your banking application was approved 🎉",
+    subject: "Banking application approved",
+    body: `Great news — your application for <strong>{business}</strong> was approved. Our backend
+       office is now setting up your account, and we'll reach out once it's ready.`,
+  },
+  rejected: {
+    title: "Your banking application needs attention",
+    subject: "Banking application needs attention",
+    body: `We couldn't process your application for <strong>{business}</strong> as submitted. Log in to
+       your portal and resubmit with corrected details — we'll pick it right back up.`,
+  },
+  completed: {
+    title: "Your business bank account is ready 🎉",
+    subject: "Your business bank account is set up",
+    body: `Your business bank account for <strong>{business}</strong> has been set up. Check your
+       portal for the details and next steps.`,
+  },
+};
+
+export function bankStatusEmail(opts: {
+  businessName: string;
+  status: string;
+}): { subject: string; html: string } {
+  const content = BANK_STATUS_CONTENT[opts.status] ?? BANK_STATUS_CONTENT.received;
+  const subject = `${content.subject} — ${opts.businessName}`;
+  const html = shell(
+    content.title,
+    `<p style="margin:0 0 12px;color:#334155;font-size:15px;line-height:1.6;">
+       ${content.body.replace("{business}", opts.businessName)}
+     </p>
+     <a href="${getAppUrl()}/portal/bank" style="display:inline-block;background:#0b1b3b;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;font-size:14px;">
+       View application status
+     </a>`,
+  );
+  return { subject, html };
+}
+
 export function einReminderEmail(opts: { businessName: string }): { subject: string; html: string } {
   const subject = `Reminder: get your EIN for ${opts.businessName}`;
   const html = shell(
@@ -182,6 +237,27 @@ export function einReminderEmail(opts: { businessName: string }): { subject: str
 
 function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
+// ---- Notification helpers ----
+
+export async function maybeSendBankStatus(opts: {
+  to: string;
+  businessName: string;
+  status: string;
+  formationId?: string | null;
+}) {
+  const { subject, html } = bankStatusEmail({
+    businessName: opts.businessName,
+    status: opts.status,
+  });
+  return sendEmail({
+    to: opts.to,
+    subject,
+    html,
+    type: "bank_status",
+    formationId: opts.formationId ?? undefined,
+  });
 }
 
 // ---- Notification helpers (idempotent: send once per formation) ----
