@@ -8,6 +8,7 @@ export type ServiceLine = {
   recurring: boolean;
   interval: string | null;
   quantity: number;
+  stripePriceId?: string | null;
 };
 
 export async function getPricingConfig() {

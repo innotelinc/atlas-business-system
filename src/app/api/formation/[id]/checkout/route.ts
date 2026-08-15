@@ -28,6 +28,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     priceCents: fs.service.priceCents,
     recurring: fs.service.recurring,
     interval: fs.service.interval,
+    stripePriceId: fs.service.stripePriceId,
     quantity: fs.quantity,
   }));
   const totals = computeTotals(stateFeeCents, serviceFeeCents, services);
@@ -66,15 +67,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       },
       quantity: 1,
     },
-    ...services.map((s) => ({
-      price_data: {
-        currency: "usd",
-        product_data: { name: `${s.name}${s.recurring ? ` (per ${s.interval ?? "year"})` : ""}` },
-        unit_amount: s.priceCents,
-        recurring: s.recurring ? { interval: (s.interval as "year" | "month") ?? "year" } : undefined,
-      },
-      quantity: s.quantity,
-    })),
+    ...services.map((s) =>
+      s.stripePriceId
+        ? { price: s.stripePriceId, quantity: s.quantity }
+        : {
+            price_data: {
+              currency: "usd",
+              product_data: { name: `${s.name}${s.recurring ? ` (per ${s.interval ?? "year"})` : ""}` },
+              unit_amount: s.priceCents,
+              recurring: s.recurring ? { interval: (s.interval as "year" | "month") ?? "year" } : undefined,
+            },
+            quantity: s.quantity,
+          },
+    ),
   ];
 
   const hasRecurring = services.some((s) => s.recurring);

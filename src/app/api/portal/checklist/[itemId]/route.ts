@@ -17,7 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ itemId:
   if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
 
   const formation = await prisma.formation.findFirst({
-    where: { userId: session.id },
+    where: { userId: session.id, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
   if (!formation) return NextResponse.json({ error: "No formation yet" }, { status: 404 });

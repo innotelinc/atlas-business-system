@@ -7,7 +7,8 @@ export type EmailType =
   | "analyst_approved"
   | "ein_reminder"
   | "filing_filed"
-  | "bank_status";
+  | "bank_status"
+  | "new_message";
 
 // Without RESEND_API_KEY, emails are logged to the console and recorded in the
 // SentEmail table with status "logged" so the flow is testable in development.
@@ -211,6 +212,28 @@ export function bankStatusEmail(opts: {
   return { subject, html };
 }
 
+export function newMessageEmail(opts: {
+  clientName: string;
+  subject: string;
+  preview: string;
+}): { subject: string; html: string } {
+  const subject = `New message from Atlas — ${opts.subject}`;
+  const html = shell(
+    "You have a new message from Atlas 💬",
+    `<p style="margin:0 0 12px;color:#334155;font-size:15px;line-height:1.6;">
+       Hi ${opts.clientName}, you have a new message in your Atlas client portal:
+     </p>
+     <div style="margin:0 0 16px;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+       <p style="margin:0 0 6px;font-weight:bold;color:#0b1b3b;font-size:14px;">${opts.subject}</p>
+       <p style="margin:0;color:#334155;font-size:14px;line-height:1.5;">${opts.preview}…</p>
+     </div>
+     <a href="${getAppUrl()}/portal/messages" style="display:inline-block;background:#0b1b3b;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold;font-size:14px;">
+       View message
+     </a>`,
+  );
+  return { subject, html };
+}
+
 export function einReminderEmail(opts: { businessName: string }): { subject: string; html: string } {
   const subject = `Reminder: get your EIN for ${opts.businessName}`;
   const html = shell(
@@ -240,6 +263,16 @@ function getAppUrl(): string {
 }
 
 // ---- Notification helpers ----
+
+export async function sendMessageEmail(opts: {
+  to: string;
+  clientName: string;
+  subject: string;
+  preview: string;
+}) {
+  const { subject, html } = newMessageEmail(opts);
+  return sendEmail({ to: opts.to, subject, html, type: "new_message" });
+}
 
 export async function maybeSendBankStatus(opts: {
   to: string;

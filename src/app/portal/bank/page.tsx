@@ -25,7 +25,7 @@ const STATUS_TONE: Record<string, "green" | "amber" | "blue" | "red" | "slate"> 
 export default async function BankPage() {
   const session = await requireUser();
   const formation = await prisma.formation.findFirst({
-    where: { userId: session.id },
+    where: { userId: session.id, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
   const existing = await prisma.bankApplication.findFirst({

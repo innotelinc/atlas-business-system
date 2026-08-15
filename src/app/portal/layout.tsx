@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, KeyRound, ListChecks, CreditCard, Landmark } from "lucide-react";
+import { LayoutDashboard, KeyRound, ListChecks, CreditCard, Landmark, MessageSquare } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatDateShort, formatType } from "@/lib/format";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await requireUser();
   const formation = await prisma.formation.findFirst({
-    where: { userId: session.id },
+    where: { userId: session.id, archivedAt: null },
     orderBy: { createdAt: "desc" },
     include: { credentials: true, state: true },
   });
@@ -25,6 +25,7 @@ export default async function PortalLayout({ children }: { children: React.React
     { href: "/portal/checklist", label: "Business checklist", icon: ListChecks },
     { href: "/portal/credit", label: "Business credit", icon: CreditCard },
     { href: "/portal/bank", label: "Business banking", icon: Landmark },
+    { href: "/portal/messages", label: "Messages", icon: MessageSquare },
   ];
 
   return (

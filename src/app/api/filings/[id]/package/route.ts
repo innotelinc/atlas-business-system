@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { buildFilingPackagePdf } from "@/lib/pdf";
+import { getFormFields } from "@/lib/form-templates";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -11,7 +12,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const filing = await prisma.filing.findUnique({
     where: { id },
-    include: { formation: { include: { state: true, document: true } }, state: true },
+    include: {
+      formation: { include: { state: { include: { fees: true } }, document: true } },
+      state: true,
+    },
   });
   if (!filing) return new Response("Not found", { status: 404 });
   if (!filing.formation.document) return new Response("Document not built yet", { status: 400 });
@@ -33,6 +37,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     filingProvider: filing.provider,
     sosSiteUrl: filing.state.sosSiteUrl,
     nameSearchUrl: filing.state.nameSearchUrl,
+    fields:
+      (filing.formation.state?.fees.find((f) => f.type === filing.type)?.formFields as
+        unknown[] | null) ??
+      getFormFields(filing.state.code, filing.type),
   });
 
   const safeName = (filing.formation.businessName ?? "formation")

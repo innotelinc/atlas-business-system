@@ -3,6 +3,7 @@
 // `verified` to true. Run with `pnpm db:verify-fees`.
 import { PrismaClient } from "@prisma/client";
 import { VERIFIED_STATES, VERIFIED_DATE } from "../prisma/seed-data/verified-states";
+import { getFormFields } from "../src/lib/form-templates";
 
 const prisma = new PrismaClient();
 
@@ -19,6 +20,7 @@ async function main() {
     }
     for (const type of TYPES) {
       const fee = s.fees[type];
+      const formFields = getFormFields(s.code, type);
       await prisma.stateFee.upsert({
         where: { stateCode_type: { stateCode: s.code, type } },
         update: {
@@ -27,6 +29,7 @@ async function main() {
           filingTime: fee.time,
           verified: true,
           sourceNote: `${fee.note} — Verified ${VERIFIED_DATE} against official state source.`,
+          formFields: formFields as unknown as object[],
         },
         create: {
           stateCode: s.code,
@@ -36,6 +39,7 @@ async function main() {
           filingTime: fee.time,
           verified: true,
           sourceNote: `${fee.note} — Verified ${VERIFIED_DATE} against official state source.`,
+          formFields: formFields as unknown as object[],
         },
       });
       updated++;
