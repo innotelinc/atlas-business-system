@@ -115,6 +115,11 @@ model Formation {
   stateFeeCents    Int                @default(0)
   serviceFeeCents  Int                @default(0)
   totalCents       Int                @default(0)
+  paymentEmailSent Boolean            @default(false)
+  analystEmailSent Boolean            @default(false)
+  einReminderCount Int                @default(0)
+  lastEinReminderAt DateTime?
+  sentEmails       SentEmail[]
   nameCheck        NameCheck?
   document         Document?
   credentials      Credentials?
@@ -193,6 +198,18 @@ model ChecklistEntry {
   updatedAt   DateTime       @updatedAt
 
   @@unique([formationId, itemId])
+}
+
+model SentEmail {
+  id        String   @id @default(cuid())
+  formationId String?
+  formation Formation? @relation(fields: [formationId], references: [id], onDelete: SetNull)
+  to        String
+  subject   String
+  type      String // payment_received | analyst_approved | ein_reminder
+  status    String // sent | failed | logged (dev fallback)
+  error     String?
+  createdAt DateTime @default(now())
 }
 
 model BankApplication {

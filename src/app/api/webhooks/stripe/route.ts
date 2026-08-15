@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { maybeSendPaymentReceived } from "@/lib/email";
 
 export async function POST(req: Request) {
   if (!stripe) return NextResponse.json({ error: "Stripe not configured" }, { status: 501 });
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
           stripeCustomerId: typeof session.customer === "string" ? session.customer : undefined,
         },
       });
+      await maybeSendPaymentReceived(formationId);
     }
   }
 

@@ -72,6 +72,18 @@ Change both in `.env` / the seed before any production use.
 
 Set `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET`, then point a webhook at `POST /api/webhooks/stripe` for `checkout.session.completed`. Without keys, the checkout step runs in **demo mode** (simulated payment) so the whole flow is testable end to end.
 
+### Email notifications (Resend)
+
+Client notifications are sent via [Resend](https://resend.com) (free tier: 3,000 emails/month):
+
+| Trigger | Email |
+| ------- | ----- |
+| Payment received | Sent on Stripe `checkout.session.completed` (or demo payment). If the client hasn't created an account yet, it's sent automatically when they claim their formation. |
+| Analyst approved | Sent when an admin approves the formation review (or on claim, if approval happened before signup). |
+| EIN reminders | Weekly reminder to obtain an EIN. Run the job daily: `pnpm cron:ein-reminders` — schedule it with Vercel Cron, GitHub Actions, cron, etc. Sends at most once every 7 days per formation. |
+
+Set `RESEND_API_KEY` and optionally `EMAIL_FROM`. **Without a key, emails are logged to the console and to the admin Email log (`/admin/emails`) with status `logged` instead of being delivered.**
+
 ## Project layout
 
 ```
@@ -111,3 +123,4 @@ src/
 | `pnpm db:migrate` | Apply Prisma migrations                  |
 | `pnpm db:seed`    | Seed states, services, checklist, users  |
 | `pnpm db:studio`  | Browse the database with Prisma Studio   |
+| `pnpm cron:ein-reminders` | Send weekly EIN reminders (run daily via a scheduler) |
